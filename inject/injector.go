@@ -20,8 +20,8 @@ func a(){
 `
 
 type Injector struct {
-	MyImport *ast.ImportSpec
-	Mystate  ast.Stmt
+	ImportSpec *ast.ImportSpec
+	Stmt       ast.Stmt
 }
 
 func (i *Injector) InjectFunc(f ast.Decl) error {
@@ -32,7 +32,7 @@ func (i *Injector) InjectFunc(f ast.Decl) error {
 	}
 	newList := make([]ast.Stmt, 0, len(fd.Body.List)+1)
 
-	newList = append(newList, i.Mystate)
+	newList = append(newList, i.Stmt)
 
 	newList = append(newList, fd.Body.List...)
 
@@ -41,16 +41,22 @@ func (i *Injector) InjectFunc(f ast.Decl) error {
 }
 
 func (i *Injector) InjectFile(path string) error {
-	fset := token.NewFileSet()
-	fbytes, err := ioutil.ReadFile(path)
+	fSet := token.NewFileSet()
+	fBytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+
 	index := strings.LastIndex(path, `/`)
-	f, err := parser.ParseFile(fset, string(path[index+1:]), fbytes, 0)
+	f, err := parser.ParseFile(fSet, path[index+1:], fBytes, 0)
 	if err != nil {
 		return err
 	}
 
 	for _, decl := range f.Decls {
-		i.InjectFunc(decl)
+		if err := i.InjectFunc(decl); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -58,15 +64,15 @@ func (i *Injector) InjectFile(path string) error {
 
 func NewInjector() *Injector {
 	i := &Injector{}
-	fset := token.NewFileSet()
-	f, err := parser.ParseFile(fset, "", INJECT, 0)
+	fSet := token.NewFileSet()
+	f, err := parser.ParseFile(fSet, "", INJECT, 0)
 	if err != nil {
 		panic(err)
 	}
 
 	for _, d := range f.Decls {
 		if fd, ok := d.(*ast.FuncDecl); ok {
-			i.Mystate = fd.Body.List[0]
+			i.Stmt = fd.Body.List[0]
 		}
 	}
 	return i

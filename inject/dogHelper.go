@@ -6,13 +6,13 @@ import (
 	"strings"
 )
 
-var gopaths []string
+var gopathList []string
 
 func init() {
 	gopath := os.Getenv("GOPATH")
-	gopaths = strings.Split(gopath, ";")
-	for i := range gopaths {
-		gopaths[i] += "/src/"
+	gopathList = strings.Split(gopath, ";")
+	for i := range gopathList {
+		gopathList[i] += "/src/"
 	}
 }
 
@@ -36,22 +36,22 @@ func __caller() (string, string, int) {
 	}
 
 	// get the info of the actual function that's in the pointer
-	fun := runtime.FuncForPC(fpcs[0] - 1)
-	if fun == nil {
+	f := runtime.FuncForPC(fpcs[0] - 1)
+	if f == nil {
 		return "", "n/a", 0
 	}
 
-	file, line := fun.FileLine(0)
+	file, line := f.FileLine(0)
 	// return its name
-	return fun.Name(), file, line
+	return f.Name(), file, line
 }
 
 func __prettyCaller(caller string) string {
-	return string(string(caller[strings.LastIndex(caller, ".")+1:]))
+	return caller[strings.LastIndex(caller, ".")+1:]
 }
 
 func __prettyFile(file string) string {
-	for _, gopath := range gopaths {
+	for _, gopath := range gopathList {
 		if strings.Contains(file, gopath) {
 			return strings.Replace(file, gopath, "", -1)
 		}

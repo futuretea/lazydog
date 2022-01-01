@@ -2,6 +2,7 @@ package brownfox
 
 import (
 	"bytes"
+	"fmt"
 	"go/ast"
 	"go/printer"
 	"go/token"
@@ -15,23 +16,25 @@ import (
 type BrownFox struct {
 	path   string
 	dirs   []string
-	deepth int
+	depth  int
 	inject *inject.Injector
 	file.Jumper
 }
 
-func NewBrownFox(path string, deepth int) *BrownFox {
+func NewBrownFox(path string, depth int) *BrownFox {
 	return &BrownFox{
 		path:   path,
-		deepth: deepth,
+		depth:  depth,
 		inject: inject.NewInjector(),
-		dirs:   file.TreeDir(path, deepth),
+		dirs:   file.TreeDir(path, depth),
 	}
 }
 
 func (b *BrownFox) Backup() error {
 	for _, dir := range b.dirs {
-		b.BackupPath(dir)
+		if err := b.BackupPath(dir); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -41,11 +44,11 @@ func (b *BrownFox) Restore() error {
 		if err := b.RestorePath(dir); err != nil {
 			return err
 		}
-		gofiles := file.ListGoFile(dir, false)
-		if len(gofiles) == 0 {
+		goFiles := file.ListGoFile(dir, false)
+		if len(goFiles) == 0 {
 			continue
 		}
-		parser := inject.NewParser(token.NewFileSet(), gofiles[0])
+		parser := inject.NewParser(token.NewFileSet(), goFiles[0])
 		if err := parser.Parse(); err != nil {
 			return err
 		}
@@ -61,10 +64,10 @@ func (b *BrownFox) Restore() error {
 
 func (b *BrownFox) Inject() error {
 	for _, dir := range b.dirs {
-		for _, gofile := range file.ListGoFile(dir, false) {
-
+		for _, goFile := range file.ListGoFile(dir, false) {
+			fmt.Println("Inject: ", goFile)
 			fset := token.NewFileSet()
-			parser := inject.NewParser(fset, gofile)
+			parser := inject.NewParser(fset, goFile)
 			err := parser.Parse()
 			if err != nil {
 				panic(err)
@@ -77,9 +80,12 @@ func (b *BrownFox) Inject() error {
 
 			// write to new file
 			var buf bytes.Buffer
-			printer.Fprint(&buf, fset, parser.GetAst())
+			if err := printer.Fprint(&buf, fset, parser.GetAst()); err != nil {
+				return err
+			}
+
 			//fmt.Println(buf.String())
-			if err := ioutil.WriteFile(gofile, buf.Bytes(), os.ModeExclusive); err != nil {
+			if err := ioutil.WriteFile(goFile, buf.Bytes(), os.ModeExclusive); err != nil {
 				panic(err)
 			}
 

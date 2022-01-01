@@ -22,9 +22,12 @@ func NewParser(tokenFS *token.FileSet, fn string) *Parser {
 }
 
 func (p *Parser) Parse() error {
-	fbytes, err := ioutil.ReadFile(p.filename)
+	fBytes, err := ioutil.ReadFile(p.filename)
+	if err != nil {
+		return err
+	}
 	index := strings.LastIndex(p.filename, `/`)
-	f, err := parser.ParseFile(p.tokenFS, string(p.filename[index+1:]), fbytes, 0)
+	f, err := parser.ParseFile(p.tokenFS, string(p.filename[index+1:]), fBytes, 0)
 	if err != nil {
 		return err
 	}

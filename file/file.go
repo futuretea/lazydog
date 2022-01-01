@@ -7,9 +7,11 @@ import (
 )
 
 const BackupSuffix = ".ld"
-const HelperSuffix = "_lzdgen.go"
 
-//===== funcs
+func vendorDir(path string) bool {
+	sps := strings.Split(path, `/`)
+	return len(sps) > 1 && sps[1] == "vendor"
+}
 
 func hiddenDir(path string) bool { // just tmp impl
 	sps := strings.Split(path, `/`)
@@ -30,39 +32,47 @@ func hiddenDir(path string) bool { // just tmp impl
 }
 
 func ListGoFile(path string, jumpBacked bool) []string {
-	return listSuffixFile(path, []string{".go"}, jumpBacked, "_test.go", HelperSuffix)
+	return listSuffixFile(path, []string{".go"}, jumpBacked, "_test.go", "_lzd.go")
 }
 
-func listSuffixFile(path string, include []string, jumpBacked bool, exclude ...string) []string {
-	fis, err := ioutil.ReadDir(path)
+func isExcluded(fileName string, excludes []string) bool {
+	for _, exclude := range excludes {
+		if strings.HasSuffix(fileName, exclude) {
+			return true
+		}
+	}
+	return false
+}
+
+func listSuffixFile(path string, includes []string, jumpBacked bool, excludes ...string) []string {
+	files, err := ioutil.ReadDir(path)
 	if err != nil {
 		panic(err)
 	}
-	farray := []string{}
-	for _, fi := range fis {
-		if fi.IsDir() {
+	fileList := make([]string, 0, len(files))
+	for _, file := range files {
+		if file.IsDir() {
 			continue
 		}
-		for _, exclu := range exclude {
-			if strings.HasSuffix(fi.Name(), exclu) {
-				continue
-			}
+
+		if isExcluded(file.Name(), excludes) {
+			continue
 		}
 
 		// backup file exists
 		if jumpBacked {
-			if _, err := os.Stat(path + "/" + fi.Name() + BackupSuffix); !os.IsNotExist(err) {
+			if _, err := os.Stat(path + "/" + file.Name() + BackupSuffix); !os.IsNotExist(err) {
 				continue
 			}
 		}
 
-		for _, inclu := range include {
-			if strings.HasSuffix(fi.Name(), inclu) {
-				farray = append(farray, path+"/"+fi.Name())
+		for _, include := range includes {
+			if strings.HasSuffix(file.Name(), include) {
+				fileList = append(fileList, path+"/"+file.Name())
 			}
 		}
 	}
-	return farray
+	return fileList
 }
 
 func ListGoFileByPaths(paths []string, jumpBacked bool) []string {
@@ -78,6 +88,9 @@ func TreeDir(path string, deepth int) []string {
 	if hiddenDir(path) {
 		return []string{}
 	}
+	if vendorDir(path) {
+		return []string{}
+	}
 	paths := []string{path}
 	fis, err := ioutil.ReadDir(path)
 	if err != nil {
@@ -85,11 +98,11 @@ func TreeDir(path string, deepth int) []string {
 	}
 	for _, fi := range fis {
 		if fi.IsDir() && deepth != 0 {
-			nextDeepth := -1
+			nextDepth := -1
 			if deepth != -1 {
-				nextDeepth = deepth - 1
+				nextDepth = deepth - 1
 			}
-			paths = append(paths, TreeDir(path+"/"+fi.Name(), nextDeepth)...)
+			paths = append(paths, TreeDir(path+"/"+fi.Name(), nextDepth)...)
 		}
 	}
 
@@ -119,12 +132,11 @@ func copyFile(src string, dst string) error {
 	if err != nil {
 		return err
 	}
+
 	return ioutil.WriteFile(dst, data, 0644)
 }
 
-//===========
-type Jumper struct {
-}
+type Jumper struct{}
 
 func (j *Jumper) BackupPath(path string) error {
 	files := ListGoFile(path, true)

@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/JodeZer/lazydog/brownfox"
 	"github.com/spf13/cobra"
+
+	"github.com/JodeZer/lazydog/brownfox"
 )
 
 var Root = &cobra.Command{

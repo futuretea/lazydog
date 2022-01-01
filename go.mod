@@ -1,3 +1,5 @@
 module github.com/JodeZer/lazydog
 
-require github.com/spf13/cobra v0.0.3 // indirect
+go 1.16
+
+require github.com/spf13/cobra v1.3.0

@@ -7,11 +7,9 @@ import (
 	"go/token"
 	"io/ioutil"
 	"os"
-	pkgPath "path"
+	"path"
 	"runtime"
 	"strings"
-
-	"github.com/JodeZer/lazydog/file"
 )
 
 type DogHelper struct {
@@ -29,12 +27,13 @@ func (d *DogHelper) WriteDogHelper() {
 
 	_, filename, _, _ := runtime.Caller(0)
 
-	fset := token.NewFileSet()
-	fbytes, err := ioutil.ReadFile(pkgPath.Join(pkgPath.Dir(filename)) + "/dogHelper.go")
+	fSet := token.NewFileSet()
+	fBytes, err := ioutil.ReadFile(path.Join(path.Dir(filename)) + "/dogHelper.go")
 	if err != nil {
 		panic(err)
 	}
-	f, err := parser.ParseFile(fset, "dogHelper.go", fbytes, 0)
+
+	f, err := parser.ParseFile(fSet, "dogHelper.go", fBytes, 0)
 	if err != nil {
 		panic(err)
 	}
@@ -42,7 +41,7 @@ func (d *DogHelper) WriteDogHelper() {
 	f.Name.Name = d.pkg
 
 	var buf bytes.Buffer
-	printer.Fprint(&buf, fset, f)
+	_ = printer.Fprint(&buf, fSet, f)
 	if err := ioutil.WriteFile(genPath(d.path, d.pkg), buf.Bytes(), os.ModePerm); err != nil {
 		panic(err)
 	}
@@ -58,5 +57,5 @@ func genPath(path, pkg string) string {
 	if !strings.HasSuffix(path, "/") && len(path) != 0 {
 		suffix = "/"
 	}
-	return path + suffix + "gen_" + pkg + file.HelperSuffix
+	return path + suffix + "gen_lzd.go"
 }
